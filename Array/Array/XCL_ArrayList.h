@@ -65,12 +65,12 @@ public:
 				}
 				else //do not have next vector, or it is the end
 				{
-					throw ArrayException(ArrayException.NoSuchElementException);
+					//throw ArrayException(ArrayException.NoSuchElementException);
 				}
 			}
 			else // is indexOfBlicks[vectorIndex] exist? NO
 			{
-				if (m_vectorIndex == NegativeONE && m_index == NegativeONE && m_indexInVector = NegativeONE) // before the first one
+				if (m_vectorIndex == NegativeONE && m_index == NegativeONE && m_indexInVector == NegativeONE) // before the first one
 				{
 					begin();
 					if (thisArrayList->m_size > 0)
@@ -79,7 +79,7 @@ public:
 					}
 				}
 			}
-			throw ArrayException(ArrayException.NoSuchElementException);
+			//throw ArrayException(ArrayException.NoSuchElementException);
 		}
 		virtual void begin()
 		{
@@ -93,7 +93,7 @@ public:
 			if (thisArrayList->m_indexOfBlocks.back().elements.size() < thisArrayList->m_block_suggestCapacity)
 			{
 				m_vectorIndex = thisArrayList->m_indexOfBlocks.size() - 1;
-				m_indexInVector = thisArrayList->m_indexOfBlocks[m_vectorIndex].size();
+				m_indexInVector = thisArrayList->m_indexOfBlocks[m_vectorIndex].elements.size();
 			}
 			else
 			{
@@ -124,7 +124,34 @@ public:
 			}
 			else // is indexOfBlicks[vectorIndex] exist? NO
 			{
-				if (m_vectorIndex == NegativeONE && m_index == NegativeONE && m_indexInVector = NegativeONE) // before the first one
+				if (m_vectorIndex == NegativeONE && m_index == NegativeONE && m_indexInVector == NegativeONE) // before the first one
+				{
+					begin();
+				}
+				else
+					m_index++;
+			}
+		}
+		virtual void operator++()
+		{
+			if (m_vectorIndex < thisArrayList->m_indexOfBlocks.size()) // is indexOfBlicks[vectorIndex] exist? YES
+			{
+				m_index++;
+				if ((m_indexInVector++) < thisArrayList->m_indexOfBlocks[m_vectorIndex].elements.size()) // has NEXT in the vector?
+				{
+				}
+				else if ((m_vectorIndex++) < thisArrayList->m_indexOfBlocks.size()) // Need to move to the next vector, and has next vector
+				{
+					m_indexInVector = 0;
+				}
+				else //do not have next vector, or it is the end
+				{
+					end();
+				}
+			}
+			else // is indexOfBlicks[vectorIndex] exist? NO
+			{
+				if (m_vectorIndex == NegativeONE && m_index == NegativeONE && m_indexInVector == NegativeONE) // before the first one
 				{
 					begin();
 				}
@@ -245,7 +272,7 @@ public:
 		ArrayList<T1>* thisArrayList; // the ptr of the arraylist that this iterator point to
 		ArrayList_Iterator(size_t index, ArrayList<T1>* ptr)
 		{
-			if (isValidIndex(index))
+			if (thisArrayList->isValidIndex(index))
 			{
 				m_vectorIndex = ptr->inWhichVector(index);
 				m_indexInVector = index - ptr->m_indexOfBlocks[m_vectorIndex].index;
@@ -270,7 +297,7 @@ public:
 			m_vectorIndex = NegativeONE;
 			m_indexInVector = NegativeONE; //0xFFFFFFFFFFFFFFFF;
 		}
-		void init()
+		inline void init()
 		{
 			m_index = NegativeONE; //0xFFFFFFFFFFFFFFFF;
 			m_vectorIndex = NegativeONE;
@@ -343,7 +370,7 @@ public:
 		this->deleteMethod = copy.deleteMethod;
 		this->m_autoBlockSize = copy.m_autoBlockSize;
 	}
-	ArrayList(Collection<T>& anArray, size_t block_suggestCapacity = m_default_block_suggestCapacity bool autoBlockSize = false, void (*deleteMethod)(T) = nullptr)
+	ArrayList(Collection<T>& anArray, size_t block_suggestCapacity = m_default_block_suggestCapacity, bool autoBlockSize = false, void (*deleteMethod)(T) = nullptr)
 	{
 		if (deleteMethod != nullptr)
 		{
@@ -377,12 +404,56 @@ public:
 		else
 		{
 			if (m_autoBlockSize)restructure();
-			m_indexOfBlocks.emplace_back(ArrayList_Block<T>(m_size, m_block_minCapacity);//create a new block
+			m_indexOfBlocks.emplace_back(ArrayList_Block<T>(m_size, m_block_minCapacity));//create a new block
 			m_indexOfBlocks.back().elements.emplace_back(e);
 		}
 		m_size++;
 		Collection<T>::m_aLock.unlock();
 	}
+
+
+
+	size_t size()
+	{
+		Collection<T>::m_aLock.lock_shared();
+		size_t ret = m_size;
+		Collection<T>::m_aLock.unlock_shared();
+		return ret;
+	}
+
+
+
+
+	///////////////////////
+	void iterator(Iterator<T> iterator)
+	{
+		iterator = ArrayList_Iterator<T>(this);
+		//return static_cast<Iterator<T>>(ai);
+	}
+	ArrayList_Iterator<T> getIteratorAt(size_t index)
+	{
+		return ArrayList_Iterator<T>(index, this);
+	}
+	ArrayList_Iterator<T> begin()
+	{
+		return ArrayList_Iterator<T>(0, 0, 0, this);
+	}
+	ArrayList_Iterator<T> end()
+	{
+		Collection<T>::m_aLock.lock_shared();
+		ArrayList_Iterator<T> i = ArrayList_Iterator<T>(m_size, m_indexOfBlocks.size() - 1, m_indexOfBlocks.back().elements.size(), this);
+		Collection<T>::m_aLock.unlock_shared();
+		return i;
+	}
+	T& back()
+	{
+		Collection<T>::m_aLock.lock_shared();
+		T& ret = m_indexOfBlocks.back().elements.back();
+		Collection<T>::m_aLock.unlock_shared();
+		return ret;
+	}
+
+
 
 private:
 	std::vector<ArrayList_Block<T>, alloc> m_indexOfBlocks;
@@ -402,23 +473,54 @@ private:
 		size_t rightIndex = m_indexOfBlocks.size(); // not include in the range
 		size_t cursor = index / m_block_suggestCapacity; // optimize the initial start point
 		if (cursor >= rightIndex)
-			cursor = rightIndex - 1£»
-			while (leftIndex + 1 < rightIndex)
+			cursor = rightIndex - 1;
+		while (leftIndex + 1 < rightIndex)
+		{
+			if (m_indexOfBlocks[cursor].index < index)
 			{
-				if (m_indexOfBlocks[cursor].index < index)
-				{
-					leftIndex = cursor;
-					cursor = (leftIndex + rightIndex) >> 1;
-				}
-				else if (m_indexOfBlocks[cursor].index > index)
-				{
-					rightIndex = cursor;
-					cursor = (leftIndex + rightIndex) >> 1;
-				}
-				else
-					return cursor;
+				leftIndex = cursor;
+				cursor = (leftIndex + rightIndex) >> 1;
 			}
+			else if (m_indexOfBlocks[cursor].index > index)
+			{
+				rightIndex = cursor;
+				cursor = (leftIndex + rightIndex) >> 1;
+			}
+			else
+				return cursor;
+		}
 		return leftIndex;
+	}
+
+
+private:
+	const size_t m_minBlockSizeNeedRestructure = 1024;
+	size_t m_maxReachedSize = m_minBlockSizeNeedRestructure;
+	const size_t m_maxBlockSize = 4096;
+public:
+	void restructure()// adjust the size of one block based on the arrayList size
+	{
+		if (m_size < m_maxReachedSize || m_block_suggestCapacity > m_maxBlockSize)
+			return;
+		m_maxReachedSize = m_size;
+		size_t block_suggestCapacity = m_size >> 5;
+		if (block_suggestCapacity > m_maxBlockSize)
+			block_suggestCapacity = m_maxBlockSize;
+		restructure(block_suggestCapacity >> 2, block_suggestCapacity, block_suggestCapacity << 1);
+	}
+	void restructure(size_t block_suggestCapacity, bool autoBlockSize)
+	{
+		m_block_minCapacity = block_suggestCapacity >> 3 + 1;
+		m_block_suggestCapacity = block_suggestCapacity;
+		m_splitPoint = block_suggestCapacity << 1;
+		m_autoBlockSize = autoBlockSize;
+	}
+	void restructure(size_t block_minCapacity, size_t block_suggestCapacity, size_t splitPoint, bool autoBlockSize)
+	{
+		m_block_minCapacity = block_minCapacity;
+		m_block_suggestCapacity = block_suggestCapacity;
+		m_splitPoint = splitPoint;
+		m_autoBlockSize = autoBlockSize;
 	}
 	void restructure(size_t block_minCapacity, size_t block_suggestCapacity, size_t splitPoint)
 	{
@@ -428,7 +530,13 @@ private:
 	}
 
 public:
-
+	bool isValidIndex(size_t index)
+	{
+		//lockReading();
+		bool ret = index >= 0 && index < m_size;
+		//unlockReading();
+		return ret;
+	}
 
 };
 
