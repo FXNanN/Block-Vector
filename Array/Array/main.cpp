@@ -2,9 +2,11 @@
 //
 
 #include <iostream>
+#include "Array.h"
 
 int main()
 {
+    ArrayList<int> i;
     std::cout << "Hello World!\n";
 }
 
