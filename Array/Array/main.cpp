@@ -6,7 +6,7 @@
 
 int main()
 {
-    ArrayList<int> i;
+    XCL::ArrayList<int> i;
     std::cout << "Hello World!\n";
 }
 

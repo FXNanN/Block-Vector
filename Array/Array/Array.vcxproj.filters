@@ -26,5 +26,8 @@
     <ClInclude Include="XCL_ArrayList.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="XCL.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
