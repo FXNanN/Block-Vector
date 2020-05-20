@@ -17,7 +17,7 @@ namespace XCL
 	class Collection //thread safe
 	{
 	public:
-		//virtual size_t size() = 0;
+		virtual size_t size() = 0;
 		//virtual bool isEmpty() = 0;
 		//virtual void clear() = 0;
 		//virtual const T& get(size_t index) = 0;
@@ -40,17 +40,23 @@ namespace XCL
 	};
 
 	template<typename T>
-	class Iterator: public std::iterator<std::bidirectional_iterator_tag, T>
+	class Iterator//: public std::iterator<std::bidirectional_iterator_tag, T>
 	{
 	public:
+		typedef std::forward_iterator_tag iterator_category;
+		typedef T value_type;
+		typedef T* pointer;
+		typedef T& reference;
+		typedef std::ptrdiff_t difference_type;
+
 		virtual bool hasNext() = 0;
 		virtual T& next() = 0;
 		virtual void begin() = 0;
 		virtual void end() = 0;
 		virtual size_t getIndex() = 0;
 
-		virtual void operator++(int) = 0;
-		virtual void operator++() = 0;
+		//virtual Iterator operator++(int) = 0; // return the original iterator
+		//virtual Iteraor& operator++() = 0; // return the current iterator
 		virtual bool operator==(Iterator& ref) = 0;
 		virtual bool operator!=(Iterator& ref) = 0;
 		virtual bool operator<(Iterator& ref) = 0;

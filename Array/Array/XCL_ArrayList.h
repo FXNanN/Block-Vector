@@ -4,7 +4,7 @@
 #include "XCL.h"
 #include<vector>
 XCL_BEGIN
-template <typename T, class alloc = std::allocator<T>>
+template <typename T, typename alloc = std::allocator<T>>
 class ArrayList: public Collection<T>
 {
 	template<class T1, class alloc1 = std::allocator<T>>
@@ -105,8 +105,9 @@ public:
 		{
 			return this->m_index;
 		}
-		virtual void operator++(int)
+		virtual ArrayList_Iterator<T> operator++(int)
 		{
+			ArrayList_Iterator<T> ret = this;
 			if (m_vectorIndex < thisArrayList->m_indexOfBlocks.size()) // is indexOfBlicks[vectorIndex] exist? YES
 			{
 				m_index++;
@@ -131,8 +132,9 @@ public:
 				else
 					m_index++;
 			}
+			return ret;
 		}
-		virtual void operator++()
+		virtual ArrayList_Iterator<T>& operator++()
 		{
 			if (m_vectorIndex < thisArrayList->m_indexOfBlocks.size()) // is indexOfBlicks[vectorIndex] exist? YES
 			{
@@ -158,6 +160,7 @@ public:
 				else
 					m_index++;
 			}
+			return this;
 		}
 		virtual void operator--(int)
 		{
@@ -293,9 +296,7 @@ public:
 		}
 		ArrayList_Iterator(ArrayList<T1>* ptr) : thisArrayList(ptr) //this is the default constructor
 		{
-			m_index = NegativeONE; //0xFFFFFFFFFFFFFFFF;
-			m_vectorIndex = NegativeONE;
-			m_indexInVector = NegativeONE; //0xFFFFFFFFFFFFFFFF;
+			init();
 		}
 		inline void init()
 		{
@@ -411,8 +412,24 @@ public:
 		Collection<T>::m_aLock.unlock();
 	}
 
+private:
+	template<class _Iter>
+	void addAll(_Iter& from, _Iter to, size_t length)
+	{
+
+	}
 
 
+public:
+	template<
+		template<typename, typename = std::allocator<_T>>
+		class _Container, , typename _T, typename _A>
+	void addAll(_Container<_T, _A>& c)
+	{
+		addAll(c.begin(), c.end(), c.size());
+	}
+
+public:
 	size_t size()
 	{
 		Collection<T>::m_aLock.lock_shared();
