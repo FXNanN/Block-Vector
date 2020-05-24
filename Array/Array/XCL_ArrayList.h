@@ -436,7 +436,7 @@ public:
 		Collection<T>::m_aLock.unlock();
 	}
 
-	void addAll(T* anArray, size_t length)
+	void addAll(T* anArray, const size_t length)
 	{
 		Collection<T>::m_aLock.lock();
 		_addAll(anArray, length);
@@ -514,8 +514,13 @@ private:
 
 	bool trim_split(size_t vectorIndex) // return true if trimed the vector
 	{
-		if m_indexOfBlocks[vectorIndex].elements.size() < m_splitPoint) return false;
-
+		if (m_indexOfBlocks[vectorIndex].elements.size() < m_splitPoint) return false;
+		
+		size_t previousVectorSize = 0;
+		size_t nextVectorSize = 0;
+		if (vectorIndex > 0) previousVectorSize = m_indexOfBlocks[vectorIndex - 1].elements.size();
+		if (vectorIndex < m_indexOfBlocks.size() - 1) m_indexOfBlocks[vectorIndex + 1].elements.size();
+		if ()
 
 		return true;
 	}
@@ -526,13 +531,17 @@ private:
 	}
 
 
-public:
-	template<
-		template<typename, typename = std::allocator<_T>>
-		class _Container, , typename _T, typename _A>
-	void addAll(_Container<_T, _A>& c)
+private:
+	template<typename _Iter>
+	ArrayList_Iterator<T> _addAll(ArrayList_Iterator<T>& iter, _Iter& from, size_t length)
 	{
-		addAll(c.begin(), c.end(), c.size());
+
+	}
+
+	template<typename _Iter>
+	ArrayList_Iterator<T> _addAll(ArrayList_Iterator<T>& iter, _Iter& from, _Iter& to)
+	{
+
 	}
 
 public:
@@ -557,21 +566,21 @@ public:
 	{
 		return ArrayList_Iterator<T>(index, this);
 	}
-	ArrayList_Iterator<T> begin()
+	ArrayList_Iterator<T> begin() noexcept
 	{
 		return ArrayList_Iterator<T>(0, 0, 0, this);
 	}
-	ArrayList_Iterator<T> end()
+	ArrayList_Iterator<T> end() noexcept
 	{
 		Collection<T>::m_aLock.lock_shared();
 		ArrayList_Iterator<T> i = ArrayList_Iterator<T>(m_size, m_indexOfBlocks.size() - 1, m_indexOfBlocks.back().elements.size(), this);
 		Collection<T>::m_aLock.unlock_shared();
 		return i;
 	}
-	T& back()
+	const T& back() const noexcept
 	{
 		Collection<T>::m_aLock.lock_shared();
-		T& ret = m_indexOfBlocks.back().elements.back();
+		const T& ret = m_indexOfBlocks.back().elements.back();
 		Collection<T>::m_aLock.unlock_shared();
 		return ret;
 	}
