@@ -412,9 +412,115 @@ public:
 		Collection<T>::m_aLock.unlock();
 	}
 
+	template<template<typename _T, typename _Alloc = std::allocator> class Container, typename _A>
+	void addAll(const Container<T, _A>& container)
+	{
+		Collection<T>::m_aLock.lock();
+		_addAll(container.begin(), container.size());
+		Collection<T>::m_aLock.unlock();
+	}
+
+	template<class _Iter>
+	void addAll(_Iter& from, const size_t length)
+	{
+		Collection<T>::m_aLock.lock();
+		_addAll(from, length);
+		Collection<T>::m_aLock.unlock();
+	}
+
+	template<class _Iter>
+	void addAll(_Iter& from, _Iter& to)
+	{
+		Collection<T>::m_aLock.lock();
+		_addAll(from, to);
+		Collection<T>::m_aLock.unlock();
+	}
+
+	void addAll(T* anArray, size_t length)
+	{
+		Collection<T>::m_aLock.lock();
+		_addAll(anArray, length);
+		Collection<T>::m_aLock.unlock();
+	}
+
 private:
 	template<class _Iter>
-	void addAll(_Iter& from, _Iter to, size_t length)
+	void _addAll(_Iter& from, const size_t length) // argument "to" is not necessary
+	{
+		trim_split(m_indexofBlocks.size() - 1);
+		size_t len = m_block_suggestCapacity - this->m_indexOfBlocks.back().elements.size();
+		if (len > length)
+			len = length;
+		for (size_t i = 0; i < len; i++, from++)
+		{
+			this->m_indexOfBlocks.back().elements.emplace_back(*from);
+		}
+		size_t numBlockAdd = (length - len) / m_block_suggestCapacity;
+		len += numBlockAdd * m_block_suggestCapacity;
+		for (size_t i = 0; i < numBlockAdd; i++)
+		{
+			m_indexOfBlocks.emplace_back(ArrayList::ArrayList_Block<T, alloc>(
+				m_indexOfBlocks.back().elements.size() + m_indexOfBlocks.back().index, m_block_suggestCapacity));
+			auto& lastVector = m_indexOfBlocks.back().elements;
+			for (j = 0; j < m_block_suggestCapacity; j++, from++)
+			{
+				lastVector.elements.emplace_back(*from);
+			}
+		}
+		if (len != length)
+		{
+			m_indexOfBlocks.emplace_back(ArrayList::ArrayList_Block<T, alloc>(
+				m_indexOfBlocks.back().elements.size() + m_indexOfBlocks.back().index, m_block_minCapacity));
+			auto& lastVector = m_indexOfBlocks.back().elements;
+			while (len != length)
+			{
+				lastVector.elements.emplace(*from);
+				len++;
+				from++;
+			}
+		}
+		size += length;
+		if (m_autoBlockSize) restructure();
+	}
+
+	template<class _Iter>
+	void _addAll(_Iter& from, _Iter& to)
+	{
+		size_t count = 0;
+		trim_split(m_indexOfBlocks.size() - 1);
+
+		{
+			auto& lastVector = m_indexOfBlocks.back().elements;
+			for (size_t i = lastVector.size(), i < m_block_suggestCapacity&& from != to; i++, from++, count++)
+			{
+				lastVector.emplace_back(*from);
+			}
+		}
+		while (from != to)
+		{
+			m_indexOfBlocks.emplace_back(ArrayList::ArrayList_Block<T, alloc>(
+				m_indexOfBlocks.back().elements.size() + m_indexOfBlocks.back().index, m_block_minCapacity));
+			auto& lastVector = m_indexOfBlocks.back();
+			for (i = 0; i < m_block_suggestCapacity && from != to; i++, from++, count++)
+			{
+				lastVector.emplace_back(*from);
+			}
+		}
+		m_size += count;
+		if (m_autoBlockSize) restructure();
+	}
+
+private:
+
+	bool trim_split(size_t vectorIndex) // return true if trimed the vector
+	{
+		if m_indexOfBlocks[vectorIndex].elements.size() < m_splitPoint) return false;
+
+
+		return true;
+	}
+
+	bool trim_force_toSuggestSize(size_t vectorIndex)
 	{
 
 	}
