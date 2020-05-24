@@ -535,13 +535,15 @@ private:
 	template<typename _Iter>
 	ArrayList_Iterator<T> _addAll(ArrayList_Iterator<T>& iter, _Iter& from, size_t length)
 	{
-
+		
 	}
 
 	template<typename _Iter>
 	ArrayList_Iterator<T> _addAll(ArrayList_Iterator<T>& iter, _Iter& from, _Iter& to)
 	{
+		size_t count = 0;
 
+		m_size += count;
 	}
 
 public:
