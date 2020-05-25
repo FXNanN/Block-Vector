@@ -525,19 +525,39 @@ private:
 		return ;
 	}
 
-	size_t trim_split_inPlace(size_t vectorIndex) // return the new 
+	size_t trim_split_inPlace(size_t vectorIndex) // return the new index of the end vector
 	{
 		size_t vectorSize = m_indexOfBlocks[vectorIndex].elements.size();
 		if (vectorSize) < m_splitPoint) return vectorIndex;
 
 		size_t numOfBlock = vectorSize / m_block_suggestCapacity;
+		std::vector<ArrayList_Block<T>> temp_ArrayList_Blocks;
+
+		auto vIter = m_indexOfBlocks[vectorIndex].elements.begin() + m_block_suggestCapacity;
 		
 		for (i = 1; i < numOfBlock; i++)
 		{
-
+			temp_ArrayList_Blocks.emplace_back(ArrayList_Block<T>(m_indexOfBlocks[vectorIndex].index + i * m_block_suggestCapacity));
+			temp_ArrayList_Blocks.back().elements.insert(
+				temp_ArrayList_Blocks.back().elements.begin(),
+				vIter,
+				vIter += m_block_suggestCapacity
+			);
 		}
-
-		return;
+		if (vectorSize % m_block_suggestCapacity > m_block_minCapacity)
+		{
+			temp_ArrayList_Blocks.emplace_back(ArrayList_Block<T>(m_indexOfBlocks[vectorIndex].index + i * m_block_suggestCapacity));
+		}
+		temp_ArrayList_Blocks.back().elements.insert(
+			temp_ArrayList_Blocks.back().elements.end(),
+			vIter,
+			m_indexOfBlocks[vectorIndex].elements.end()
+		);
+		m_indexOfBlocks.insert(m_indexOfBlocks.begin() + (vectorIndex + 1), temp_ArrayList_Blocks.begin(), temp_ArrayList_Blocks.end());
+		m_indexOfBlocks[vectorIndex].elements.erase(m_indexOfBlocks[vectorIndex].elements.begin() + m_block_suggestCapacity,
+			m_indexOfBlocks[vectorIndex].elements.end());
+		m_indexOfBlocks[vectorIndex].elements.shrink_to_fit();
+		return vectorIndex + temp_ArrayList_Blocks.size();
 	}
 
 	size_t trim_force_toSuggestSize(size_t vectorIndex)
