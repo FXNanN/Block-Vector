@@ -525,7 +525,7 @@ private:
 		return ;
 	}
 
-	size_t trim_split_inPlace(size_t vectorIndex) // return the new index of the end vector
+	size_t trim_split_inPlace(size_t vectorIndex) // return the new index of the end vector£¬ only affect the vectorIndex vector
 	{
 		size_t vectorSize = m_indexOfBlocks[vectorIndex].elements.size();
 		if (vectorSize) < m_splitPoint) return vectorIndex;
@@ -565,8 +565,21 @@ private:
 
 	}
 
-	ArrayList_Iterator<T> trim_split(ArrayList_Iterator<T> iter)
+	ArrayList_Iterator<T> trim_split(ArrayList_Iterator<T>& iter)
 	{
+		if (m_indexOfBlocks[iter.m_vectorIndex].elements.size() < m_splitPoint)
+			return iter;
+
+		size_t newIndex = iter.m_index;
+		size_t newVectorIndex = 0;
+		size_t newIndexInVector = 0;
+
+		size_t previousVectorSize = 0;
+		size_t nextVectorSize = 0;
+		if (iter.m_vectorIndex > 0) 
+			previousVectorSize = m_indexOfBlocks[iter.m_vectorIndex - 1].elements.size();
+		if (iter.m_vectorIndex + 1 < m_indexOfBlocks.size()) 
+			nextVectorSize = m_indexOfBlocks[iter.m_vectorIndex + 1].elements.size();
 
 	}
 
@@ -580,6 +593,7 @@ private:
 		{
 			_T& from;
 			_T& to;
+			size_t count = 0;
 		};
 
 		std::vector<Range> ranges;
@@ -592,26 +606,22 @@ private:
 		}
 
 		template<typename _T, typename... Args>
-		init(_T& i1, _T& i2, Args&... iter)
+		void init(_T& i1, _T& i2, Args&... iter)
 		{
 			init(i1, i2);
 			init(iter...);
 		}
 
 		template<typename _T>
-		inline init(_T& i1, _T& i2)
+		inline void init(_T& i1, _T& i2)
 		{
-			if (i1 != i2)
-			{
-				Range<_T> r;
-				r.from = i1;
-				r.to = i2;
-				ranges.emplace_back(r);
-			}
-
+			Range<_T> r;
+			r.from = i1;
+			r.to = i2;
+			ranges.emplace_back(r);
 		}
 
-		inline isEnd()
+		inline bool isEnd()
 		{
 			return ranges[index].from == range[index].end && index + 1 >= ranges.size();
 		}
@@ -622,9 +632,31 @@ private:
 			if (r.from != r.to)
 			{
 				r.from++;
+				r.count++;
+			}
+			else if (index + 1 < ranges.size())
+			{
+				index++;
+				while (ranges[index].from == range[index].end &&
+					index + 1 < ranges.size())
+				{
+					index++;
+				}
+			}
+		}
+
+		template<typename Instruction>
+		void next(Instruction instructionForMoveToNextRange) // exert the lambda function when move to the next range.
+		{
+			auto& r = ranges[index];
+			if (r.from != r.to)
+			{
+				r.from++;
+				r.count++;
 			}
 			else if (index != ranges.size())
 			{
+				instructionForMoveToNextRange();
 				index++;
 			}
 		}
@@ -632,6 +664,16 @@ private:
 		inline const auto& operator*() const 
 		{
 			return *(ranges[index].from);
+		}
+
+		size_t getTotalSize()
+		{
+			size_t ret = 0;
+			for (auto r : ranges)
+			{
+				ret += r.count;
+			}
+			return ret;
 		}
 	};
 
@@ -642,15 +684,20 @@ private:
 	}
 
 	template<typename _Iter>
-	ArrayList_Iterator<T> _addAll(ArrayList_Iterator<T>& iter, _Iter& from, _Iter& to)
+	ArrayList_Iterator<T> _addAll(const ArrayList_Iterator<T>& iter, _Iter& from, _Iter& to)
 	{
 		size_t count = 0;
-		size_t trimIndex_startPoint = iter.m_vectorIndex + 1;
+		size_t newIndex = 0;
+		size_t newVectorIndex = 0;
+		size_t newIndexInVector = 0;
+		size_t trimIndex_startPoint = iter.m_vectorIndex; // the vectorIndex of the first block need to edit the index
+
 		auto vectorIterator_insertIndex = (m_indexOfBlocks[iter.m_vectorIndex].elements.begin() + iter.m_indexInVector);
 		JoinHelper joinHelper = JoinHelper(m_indexOfBlocks[iter.m_vectorIndex].elements.begin(),
 			vectorIterator_insertIndex, from, to, vectorIterator_insertIndex,
 			m_indexOfBlocks[iter.m_vectorIndex].elements.end());
 		std::vector<ArrayList_Block<T>> temp_ArrayList_Blocks;
+
 		size_t tempIndex = m_indexOfBlocks[iter.m_vectorIndex].index;
 		while (!joinHelper.isEnd())
 		{
@@ -662,41 +709,31 @@ private:
 			}
 			tempIndex += temp_ArrayList_Blocks.back().elements.size();
 		}
-		count = tempIndex - m_indexOfBlocks[iter.m_vectorIndex].index - m_indexOfBlocks[iter.m_vectorIndex].elements.size();
-		if (temp_ArrayList_Blocks.back().elements.size() < m_block_minCapacity)
+		count = joinHelper.ranges[1].count;
+		newIndex = joinHelper.ranges[0].count + joinHelper.ranges[1].count;
+		newVectorIndex = newIndex / m_block_suggestCapacity;
+		newIndexInVector = newIndex % m_block_suggestCapacity;
+		newIndex = iter.m_index + joinHelper.ranges[1].count;
+
+		if (temp_ArrayList_Blocks.back().elements.size() < m_block_minCapacity && temp_ArrayList_Blocks.size() > 1)
 		{
-			if (temp_ArrayList_Blocks.size() > 1)
+			if (joinHelper.ranges[2].count < temp_ArrayList_Blocks.back().elements.size()) // if the new Iterator locate in the last block
 			{
-				temp_ArrayList_Blocks[temp_ArrayList_Blocks.size() - 2].elements.insert(
-					temp_ArrayList_Blocks[temp_ArrayList_Blocks.size() - 2].elements.end(),
-					temp_ArrayList_Blocks.back().elements.begin(),
-					temp_ArrayList_Blocks.back().elements.eng()
-				);
-				temp_ArrayList_Blocks.erase(temp_ArrayList_Blocks.end() - 1);
+				newVectorIndex--;
+				newIndexInVector += m_block_suggestCapacity;
 			}
-			else if (iter.m_vectorIndex < m_indexOfBlocks.size() - 1 && iter.m_vectorIndex > 0)
-			{
-				m_indexOfBlocks[iter.m_vectorIndex - 1].insert(
-					m_indexOfBlocks[iter.m_vectorIndex - 1].end(),
-					temp_ArrayList_Blocks[0].elements.begin(),
-					temp_ArrayList_Blocks[0].elements.eng()
-				);
-				trimIndex_startPoint += trim_split(iter.m_vectorIndex - 1) + 1 - iter.m_vectorIndex;
-				goto finish;
-			}
+			temp_ArrayList_Blocks[temp_ArrayList_Blocks.size() - 2].elements.insert(
+				temp_ArrayList_Blocks[temp_ArrayList_Blocks.size() - 2].elements.end(),
+				temp_ArrayList_Blocks.back().elements.begin(),
+				temp_ArrayList_Blocks.back().elements.end()
+			);
+			temp_ArrayList_Blocks.erase(temp_ArrayList_Blocks.end() - 1);
 		}
-		trimIndex_startPoint += temp_ArrayList_Blocks.size() - 1;
-		auto temp_ArrayList_Blocks_iter = temp_ArrayList_Blocks.begin();
-		m_indexOfBlocks[iter.m_vectorIndex].elements.swap((*temp_ArrayList_Blocks_iter).elements);
-		temp_ArrayList_Blocks_iter++;
-		m_indexOfBlocks.insert(
-			m_indexOfBlocks.begin() + iter.m_vectorIndex,
-			temp_ArrayList_Blocks_iter,
-			temp_ArrayList_Blocks.end()
-		);
+		trimIndex_startPoint += temp_ArrayList_Blocks.size();
 	finish:
 		m_size += count;
-		indexTrim(trimIndex_startPoint)
+		indexTrim(trimIndex_startPoint);
+		return trim(ArrayList_Iterator<T>(newIndex, newVectorIndex, newIndexInVector, this));
 	}
 
 	template<typename size_type>
@@ -707,6 +744,11 @@ private:
 			m_indexOfBlocks[trimIndex_startPoint].index += offset;
 			trimIndex_startPoint++;
 		}
+	}
+
+	ArrayList_Iterator trim(ArrayList_Iterator<T>& iter)
+	{
+
 	}
 
 public:
@@ -738,7 +780,8 @@ public:
 	ArrayList_Iterator<T> end() noexcept
 	{
 		Collection<T>::m_aLock.lock_shared();
-		ArrayList_Iterator<T> i = ArrayList_Iterator<T>(m_size, m_indexOfBlocks.size() - 1, m_indexOfBlocks.back().elements.size(), this);
+		ArrayList_Iterator<T> i = ArrayList_Iterator<T>(m_size, m_indexOfBlocks.size() - 1, 
+			m_indexOfBlocks.back().elements.size(), this);
 		Collection<T>::m_aLock.unlock_shared();
 		return i;
 	}
