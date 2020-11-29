@@ -6,11 +6,13 @@
 
 int main()
 {
+    int a[5] = {1,2,3,4,5};
     XCL::ArrayList<int> i;
     i.add(1);
     i.add(333);
-    std::vector<int> v;
-    v.insert(v.begin(), i.begin(), i.end());
+    i.addAll(i.begin(), a, 5);
+    //std::vector<int> v;
+    //v.insert(v.begin(), i.begin(), i.end());
 
     std::cout << "Hello World!\n";
 
